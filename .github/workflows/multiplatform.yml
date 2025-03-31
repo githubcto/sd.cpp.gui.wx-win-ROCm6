@@ -9,8 +9,36 @@ on:
         default: false
         type: boolean
   push:
+    branches:
+      - master
+      - test
     tags: [ 'v[0-9]+.[0-9]+.[0-9]+*' ]
+    paths:
+      [
+        ".github/workflows/**",
+        "**/CMakeLists.txt",
+        "**/Makefile",
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.c",
+        "**/*.cpp",
+        "**/*.cu",
+      ]
   pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      [
+        "**/CMakeLists.txt",
+        "**/Makefile",
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.c",
+        "**/*.cpp",
+        "**/*.cu",
+      ]
+
+env:
+  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
 
 jobs:
 
@@ -80,10 +108,10 @@ jobs:
             targets: "stable_diffusion_cpp_vulkan"
             cache-key: windows-vulkan
 
-#          - name: HIPBLAS
-#            cmake_flags: "-DSD_HIPBLAS=ON"
-#            targets: "stable_diffusion_cpp_hipblas"
-#            cache-key: windows-hipblas
+          - name: HIPBLAS
+            cmake_flags: "-DSD_HIPBLAS=ON"
+            targets: "stable_diffusion_cpp_hipblas"
+            cache-key: windows-hipblas
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -117,9 +145,9 @@ jobs:
       - name: Install CUDA Toolkit
         if: ${{ matrix.variant.name == 'CUDA' && steps.cache-build.outputs.cache-hit != 'true' }}
         id: cuda-toolkit
-        uses: Jimver/cuda-toolkit@v0.2.11
+        uses: Jimver/cuda-toolkit@v0.2.20
         with:
-          cuda: "12.2.0"
+          cuda: "12.8.0"
           sub-packages: '["nvcc", "cudart", "cublas", "cublas_dev", "thrust", "visual_studio_integration"]'
           method: "network"
 
@@ -130,9 +158,13 @@ jobs:
 
       - name: Install ROCm Toolkit
         if: ${{ matrix.variant.name == 'HIPBLAS' && steps.cache-build.outputs.cache-hit != 'true' }}
-        uses: Cyberhan123/rocm-toolkit@v0.1.0
-        with:
-          rocm: "5.5.0"
+        run: |
+          C:\msys64\usr\bin\wget.exe https://download.amd.com/developer/eula/rocm-hub/AMD-Software-PRO-Edition-24.Q4-WinSvr2022-For-HIP.exe -O "amdgpu-install.exe"
+          .\amdgpu-install.exe -Install -View:1
+          Start-Sleep -Seconds 60
+          $setupId = (Get-Process ATISetup).id
+          Wait-Process -Id $setupId
+          $Env:ROCm_PATH = "C:\Program Files\AMD\ROCm\6.2"
 
       - name: Install Ninja
         if: ${{ matrix.variant.name == 'HIPBLAS' && steps.cache-build.outputs.cache-hit != 'true' }}
@@ -162,12 +194,24 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path build
           cd build
+          $Env:ROCm_PATH = "C:\Program Files\AMD\ROCm\6.2"
+          $Env:HIP_PATH = "C:\Program Files\AMD\ROCm\6.2"
+          $Env:PATH = "C:\Program Files\AMD\ROCm\6.2\bin;$Env:PATH"
+          echo "ROCM_PATH=C:\Program Files\AMD\ROCm\6.2" >> $GITHUB_ENV
+          echo "HIP_PATH=C:\Program Files\AMD\ROCm\6.2" >> $GITHUB_ENV
+          echo "PATH=C:\Program Files\AMD\ROCm\6.2\bin;$Env:PATH" >> $GITHUB_ENV
           cmake .. -DCMAKE_BUILD_TYPE=Release -DCUDA_TOOLKIT_ROOT_DIR="${{steps.cuda-toolkit.outputs.CUDA_PATH}}" ${{ matrix.variant.cmake_flags }} --preset conan-default
 
       - name: Build Targets
         if: steps.cache-build.outputs.cache-hit != 'true'
         run: |
           cd build
+          $Env:ROCm_PATH = "C:\Program Files\AMD\ROCm\6.2"
+          $Env:HIP_PATH = "C:\Program Files\AMD\ROCm\6.2"
+          $Env:PATH = "C:\Program Files\AMD\ROCm\6.2\bin;$Env:PATH"
+          echo "ROCM_PATH=C:\Program Files\AMD\ROCm\6.2" >> $GITHUB_ENV
+          echo "HIP_PATH=C:\Program Files\AMD\ROCm\6.2" >> $GITHUB_ENV
+          echo "PATH=C:\Program Files\AMD\ROCm\6.2\bin;$Env:PATH" >> $GITHUB_ENV
           cmake --build . --config Release --target ${{ matrix.variant.targets }}
 
       - name: Upload Build Outputs
@@ -236,6 +280,7 @@ jobs:
         with:
           name: prebuild-packages-windows
           path: |
+            ROCm/README-RADEON.txt
             build/*.exe
             build/*.7z
             build/*.sha256
@@ -248,7 +293,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
         # variant: [CPU, HIPBLAS, CUDA, VULKAN]
-        variant: [CPU, CUDA, VULKAN]
+        variant: []
     runs-on: ${{ matrix.os }}
     steps:
       - name: Set up build environment
