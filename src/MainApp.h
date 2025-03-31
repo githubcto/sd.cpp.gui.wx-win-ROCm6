@@ -93,8 +93,16 @@ public:
                 dllName       = libPrefix + "stable-diffusion_cuda";
                 this->backend = "cuda";
             } else if (isAmdGPU()) {
-                dllName       = libPrefix + "stable-diffusion_vulkan";
-                this->backend = "vulkan";
+                const char* hipPath = std::getenv("HIP_PATH");
+                if (hipPath) {
+                    dllName       = libPrefix + "stable-diffusion_hipblas";
+                    this->backend = "hipblas";
+                    std::string newPath = std::string(hipPath) + "bin;" + std::getenv("PATH");
+                    _putenv(("PATH=" + newPath).c_str());
+                } else {
+                    dllName       = libPrefix + "stable-diffusion_vulkan";
+                    this->backend = "vulkan";
+                }
             } else if (isIntelGPU()) {
                 dllName       = libPrefix + "stable-diffusion_vulkan";
                 this->backend = "vulkan";
