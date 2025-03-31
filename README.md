@@ -1,7 +1,8 @@
 # stablediffusiongui-win-ROCm6
 
 - stablediffusiongui-windows AMD ROCm 6
-ROCm is x2 faster than vulkan.
+  
+  ROCm is x2 faster than vulkan.
 
     [Binaries for Radeon](https://github.com/githubcto/sd.cpp.gui.wx-win-ROCm6/releases) RX 7900XTX , 7900XT, 7800XT, 7700XT, 7600, 6950XT, 6900XT, 6800XT and 6800.
 
