@@ -84,6 +84,9 @@ public:
         libPrefix = "lib";
 #endif
 
+#include <cstdlib>
+#include <string>
+
         this->dllName = libPrefix + "stable-diffusion";
 
         if (!forceType.empty()) {
@@ -97,8 +100,10 @@ public:
                 if (hipPath) {
                     dllName       = libPrefix + "stable-diffusion_hipblas";
                     this->backend = "hipblas";
+#ifdef _WIN32
                     std::string newPath = std::string(hipPath) + "bin;" + std::getenv("PATH");
                     _putenv(("PATH=" + newPath).c_str());
+#endif
                 } else {
                     dllName       = libPrefix + "stable-diffusion_vulkan";
                     this->backend = "vulkan";
