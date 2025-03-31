@@ -293,7 +293,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
         # variant: [CPU, HIPBLAS, CUDA, VULKAN]
-        variant: []
+        variant: [none]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Set up build environment
